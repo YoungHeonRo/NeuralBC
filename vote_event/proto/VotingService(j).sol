@@ -57,6 +57,7 @@ contract VotingService{
     mapping(address=>uint256) voted_time;
     mapping(address=>bool) rewarded;
     mapping(address=>uint256) public voter_point;
+    mapping(address=>bool) public valid_vote;
     
     modifier onlyCreator(){
         require(msg.sender==creator);
@@ -78,10 +79,6 @@ contract VotingService{
         _;
     }
     
-    modifier onlyTheone(){
-        require(msg.sender==_theone);
-        _;
-    }
     
     constructor(address _token,uint _choices,uint _amount_selected,string _token_name) public{
         creator=msg.sender;
@@ -92,6 +89,10 @@ contract VotingService{
         start=false;
         end=false;
         token_name=_token_name;
+    }
+    
+    function Vote_Before() onlyCreator{
+       token_amount=Token(token).balanceOf(address(this));
     }
     
     function Vote_Start() onlyCreator{
@@ -116,7 +117,7 @@ contract VotingService{
     
     event selectanswer(uint256 _answer,bool _answer_selected);
     
-    function SelectAnswer(uint256 _answer) onlyCreator onGoing{
+    function SelectAnswer(uint256 _answer,address _valid_vote_true) onlyCreator onGoing{
         require(!answer_selected);
         require(_answer<=choices && _answer!=0);
         answer=_answer;
@@ -124,11 +125,13 @@ contract VotingService{
         shared_token=token_amount/vote_number[answer];
         end=true;
         selectanswer(_answer,answer_selected);
+        valid_vote[_valid_vote_true]=true;
     }
     
     event givereward(address _reward_voter,uint256 _reward_time,uint256 _point,string _token_name,uint256 _shared_token,string _gate);
     
-    function GiveReward(address _reward_voter,uint256 _reward_time) onlyCreator afterFinish{
+    function GiveReward(address _reward_voter,uint256 _reward_time,address _this_vote) onlyCreator public{
+        require(valid_vote[_this_vote]==true);
         rewarded[_reward_voter]=true;
         require(Token(token).transfer(_reward_voter,shared_token));
         voter_point[_reward_voter]=voter_point[_reward_voter].add(5);
